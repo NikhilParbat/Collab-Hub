@@ -17,7 +17,9 @@ var (
 func InitFirebase() {
 	ctx := context.Background()
 
-	app, err := firebase.NewApp(ctx, nil)
+	app, err := firebase.NewApp(ctx, &firebase.Config{
+		ProjectID: "collab-hub-ea4da",
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
