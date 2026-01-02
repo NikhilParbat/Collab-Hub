@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -13,7 +12,7 @@ var DB *sql.DB
 
 func InitDB() {
 	// Load .env ONLY for local development
-	_ = godotenv.Load()
+	// _ = godotenv.Load()
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {

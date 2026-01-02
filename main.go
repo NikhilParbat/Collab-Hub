@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/NikhilParbat/Collab-Hub/db"
 	"github.com/NikhilParbat/Collab-Hub/handlers"
@@ -20,5 +21,5 @@ func main() {
 	r.POST("/projects", handlers.CreateProject)
 	r.POST("/projects/:projectId/join/:userId", handlers.JoinProject)
 
-	log.Fatal(r.Run(":8080"))
+	log.Fatal(r.Run(os.Getenv("PORT")))
 }
