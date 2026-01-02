@@ -1,0 +1,32 @@
+package db
+
+import (
+	"database/sql"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+)
+
+var DB *sql.DB
+
+func InitDB() {
+	// Load .env ONLY for local development
+	_ = godotenv.Load()
+
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL not set")
+	}
+
+	var err error
+	DB, err = sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = DB.Ping(); err != nil {
+		log.Fatal(err)
+	}
+}

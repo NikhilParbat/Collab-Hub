@@ -5,29 +5,28 @@ import (
 	"net/http"
 	"strings"
 
-	firebaseapp "github.com/NikhilParbat/Collab-Hub/firebase"
+	firebase "firebase.google.com/go/auth"
+	"github.com/gin-gonic/gin"
 )
 
-type contextKey string
+var AuthClient *firebase.Client
 
-const UserIDKey contextKey = "userId"
-
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		if header == "" {
-			http.Error(w, "Missing token", http.StatusUnauthorized)
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
 			return
 		}
 
-		tokenStr := strings.Replace(header, "Bearer ", "", 1)
-		token, err := firebaseapp.Auth.VerifyIDToken(context.Background(), tokenStr)
+		tokenStr := strings.Replace(authHeader, "Bearer ", "", 1)
+		token, err := AuthClient.VerifyIDToken(context.Background(), tokenStr)
 		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), UserIDKey, token.UID)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+		c.Set("uid", token.UID)
+		c.Next()
+	}
 }

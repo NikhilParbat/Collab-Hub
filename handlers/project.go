@@ -1,58 +1,56 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
-	"time"
+	"strconv"
 
-	firebaseapp "github.com/NikhilParbat/Collab-Hub/firebase"
-	"github.com/NikhilParbat/Collab-Hub/middleware"
-	"github.com/NikhilParbat/Collab-Hub/models"
-	"github.com/gorilla/mux"
+	"github.com/NikhilParbat/Collab-Hub/db"
+
+	"github.com/gin-gonic/gin"
 )
 
-func CreateProject(w http.ResponseWriter, r *http.Request) {
-	uid := r.Context().Value(middleware.UserIDKey).(string)
+// Create project
+func CreateProject(c *gin.Context) {
+	var body struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		OwnerID     int    `json:"ownerId"`
+	}
 
-	var project models.Project
-	json.NewDecoder(r.Body).Decode(&project)
-
-	project.OwnerID = uid
-	project.Status = "open"
-	project.CreatedAt = time.Now()
-
-	ref, _, err := firebaseapp.Firestore.
-		Collection("projects").
-		Add(context.Background(), project)
-
-	if err != nil {
-		http.Error(w, "Failed to create project", 500)
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "invalid body"})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{
-		"projectId": ref.ID,
-	})
+	var projectID int
+	err := db.DB.QueryRow(`
+		INSERT INTO projects (title, description, owner_id)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, body.Title, body.Description, body.OwnerID).Scan(&projectID)
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, gin.H{"projectId": projectID})
 }
 
-func JoinProject(w http.ResponseWriter, r *http.Request) {
-	uid := r.Context().Value(middleware.UserIDKey).(string)
-	projectId := mux.Vars(r)["id"]
+// Join project
+func JoinProject(c *gin.Context) {
+	projectID, _ := strconv.Atoi(c.Param("projectId"))
+	userID, _ := strconv.Atoi(c.Param("userId"))
 
-	_, err := firebaseapp.Firestore.
-		Collection("projects").
-		Doc(projectId).
-		Collection("requests").
-		Doc(uid).
-		Set(context.Background(), map[string]interface{}{
-			"requestedAt": time.Now(),
-		})
+	_, err := db.DB.Exec(`
+		INSERT INTO project_members (project_id, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT DO NOTHING
+	`, projectID, userID)
 
 	if err != nil {
-		http.Error(w, "Failed to request join", 500)
+		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"status": "request sent"})
+	c.JSON(200, gin.H{"status": "joined project"})
 }

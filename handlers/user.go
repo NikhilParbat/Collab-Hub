@@ -1,32 +1,47 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
-	"time"
+	"github.com/NikhilParbat/Collab-Hub/db"
 
-	firebaseapp "github.com/NikhilParbat/Collab-Hub/firebase"
-	"github.com/NikhilParbat/Collab-Hub/middleware"
-	"github.com/NikhilParbat/Collab-Hub/models"
+	"github.com/gin-gonic/gin"
 )
 
-func InitUser(w http.ResponseWriter, r *http.Request) {
-	uid := r.Context().Value(middleware.UserIDKey).(string)
+// Create user
+func CreateUser(c *gin.Context) {
+	var body struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
 
-	var user models.User
-	json.NewDecoder(r.Body).Decode(&user)
-
-	user.CreatedAt = time.Now()
-
-	_, err := firebaseapp.Firestore.Collection("users").Doc(uid).Set(
-		context.Background(), user,
-	)
-
-	if err != nil {
-		http.Error(w, "Failed to create user", 500)
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "invalid body"})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{"status": "user created"})
+	var id int
+	err := db.DB.QueryRow(`
+		INSERT INTO users (name, email)
+		VALUES ($1, $2)
+		RETURNING id
+	`, body.Name, body.Email).Scan(&id)
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, gin.H{"userId": id})
+}
+
+// Delete user
+func DeleteUser(c *gin.Context) {
+	id := c.Param("id")
+
+	_, err := db.DB.Exec(`DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"status": "user deleted"})
 }

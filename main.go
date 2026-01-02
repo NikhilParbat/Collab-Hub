@@ -2,30 +2,23 @@ package main
 
 import (
 	"log"
-	"net/http"
 
-	firebaseapp "github.com/NikhilParbat/Collab-Hub/firebase"
+	"github.com/NikhilParbat/Collab-Hub/db"
 	"github.com/NikhilParbat/Collab-Hub/handlers"
-	"github.com/NikhilParbat/Collab-Hub/middleware"
-	"github.com/gorilla/mux"
-	// "github.com/labstack/echo/v4"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	firebaseapp.InitFirebase()
+	db.InitDB()
 
-	r := mux.NewRouter()
+	r := gin.Default()
 
-	api := r.PathPrefix("/api").Subrouter()
-	api.Use(middleware.AuthMiddleware)
+	r.POST("/users", handlers.CreateUser)
+	r.DELETE("/users/:id", handlers.DeleteUser)
 
-	api.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, Collab-Hub!"))
-	}).Methods("GET")
-	api.HandleFunc("/users/init", handlers.InitUser).Methods("POST")
-	api.HandleFunc("/projects", handlers.CreateProject).Methods("POST")
-	api.HandleFunc("/projects/{id}/join", handlers.JoinProject).Methods("POST")
+	r.POST("/projects", handlers.CreateProject)
+	r.POST("/projects/:projectId/join/:userId", handlers.JoinProject)
 
-	log.Println("Server running on :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(r.Run(":8080"))
 }
