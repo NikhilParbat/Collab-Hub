@@ -13,6 +13,7 @@ var DB *sql.DB
 func InitDB() {
 	// Load .env ONLY for local development
 	// _ = godotenv.Load()
+	log.Println("Starting DB...")
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -26,6 +27,7 @@ func InitDB() {
 	}
 
 	if err = DB.Ping(); err != nil {
-		log.Fatal(err)
+		log.Println("DB not reachable at startup:", err)
 	}
+
 }
